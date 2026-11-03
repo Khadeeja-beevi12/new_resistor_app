@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resistor AI Detective</title>
+<style>
+:root{
+  --ink:#1e293b; --muted:#64748b; --line:#e5e7eb;
+  --blue:#2563eb; --violet:#7c3aed; --green:#059669; --orange:#f97316;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;color:var(--ink);
+  background:linear-gradient(135deg,#f8fbff,#fff,#f5f3ff);min-height:100vh}
+.wrap{max-width:1000px;margin:auto;padding:20px 16px 60px}
+.main-title{text-align:center;font-size:38px;font-weight:900;margin-top:10px}
+.subtitle{text-align:center;color:var(--muted);font-size:17px;margin-bottom:10px}
+.activity-flow{text-align:center;font-weight:700;font-size:16px;margin:8px 0 22px;color:#27364b}
+.game-card{background:rgba(255,255,255,.96);border-radius:24px;padding:24px;
+  border:1px solid var(--line);box-shadow:0 12px 35px #1f293714;margin-bottom:20px}
+h2{margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 10px}
+
+/* resistor */
+.resistor-stage{min-height:170px;display:flex;align-items:center;justify-content:center;margin:10px 0;overflow:hidden}
+.resistor-wire{width:75px;height:7px;background:#9ca3af;flex-shrink:1}
+.resistor-body{width:310px;min-width:230px;height:100px;border-radius:20px;
+  background:linear-gradient(180deg,#f6d7a5,#d8aa68);display:flex;align-items:center;
+  padding:0 25px 0 35px;box-shadow:inset 0 5px 10px #ffffff66,inset 0 -6px 12px #50280a2e,0 8px 18px #0000002e}
+.resistor-band{width:24px;height:100px;flex-shrink:0;margin-right:14px;
+  box-shadow:inset 3px 0 4px #ffffff26,inset -3px 0 4px #00000030}
+.resistor-spacer{flex:1}
+.tolerance-band{margin-left:10px;margin-right:0}
+.resistor-caption{text-align:center;font-weight:700;color:var(--muted);margin-bottom:15px}
+.placeholder{color:var(--muted);text-align:center;padding:40px 0}
+
+/* inputs / buttons */
+input[type=text]{width:100%;font-size:22px;text-align:center;border:1px solid #cbd5e1;
+  border-radius:14px;padding:14px;margin:6px 0 14px}
+input[type=text]:focus,select:focus,button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+label{font-weight:700;font-size:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>*{flex:1;min-width:140px}
+button{color:#fff;border:0;border-radius:14px;font-weight:800;font-size:16px;
+  min-height:50px;padding:0 18px;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.primary-btn,.detect-btn{background:linear-gradient(90deg,var(--blue),var(--violet))}
+.green-btn{background:linear-gradient(90deg,#059669,#10b981)}
+.orange-btn{background:linear-gradient(90deg,#f97316,#f59e0b)}
+.hidden{display:none!important}
+.row.spaced{margin-top:12px}
+.score-box{background:linear-gradient(135deg,#eefdf5,#f0fdf4);border-radius:16px;padding:14px;
+  text-align:center;font-size:19px;font-weight:800;color:#166534}
+.status-text{text-align:center;font-weight:700;color:#334155;margin-top:14px}
+
+/* cards */
+.success-card,.wrong-card,.hint-card,.decode-result{border-radius:20px;padding:22px;margin-top:12px}
+.success-card{background:linear-gradient(135deg,#dcfce7,#ecfdf5);border:2px solid #86efac;color:#166534;text-align:center}
+.wrong-card{background:linear-gradient(135deg,#fff7ed,#fffbeb);border:2px solid #fdba74;color:#9a3412}
+.hint-card{background:linear-gradient(135deg,#eff6ff,#eef2ff);border:2px solid #93c5fd;color:#1e3a8a}
+.decode-result{background:#fff;border:2px solid #c7d2fe}
+.success-card h1{margin:0 0 6px;font-size:40px}
+.success-card.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+.card p,.success-card p,.wrong-card p,.hint-card p,.decode-result p{margin:6px 0}
+
+/* decoder */
+.detect-section{background:linear-gradient(135deg,#e9edf3,#f1f5f9);border-radius:24px;padding:26px;
+  border:1px solid #dbe1e8;box-shadow:0 10px 30px #1f293712}
+.detect-title{font-size:27px;font-weight:850;color:#26364d}
+.detect-subtitle{color:var(--muted);margin:8px 0 20px}
+.band-label{display:inline-block;background:#e0e7ff;color:#5555e8;font-weight:800;
+  border-radius:8px;padding:5px 10px;margin-bottom:8px}
+select{width:100%;font-size:16px;padding:12px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;margin-bottom:14px}
+.swatch-row{display:flex;gap:8px;margin:4px 0 14px}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid #0003}
+
+@media(max-width:700px){
+  .main-title{font-size:29px}
+  .game-card,.detect-section{padding:16px}
+  .resistor-wire{width:28px}
+  .resistor-body{width:230px;min-width:200px;height:80px;padding:0 16px 0 22px}
+  .resistor-band{width:18px;height:80px;margin-right:9px}
+  .tolerance-band{margin-left:7px}
+  .resistor-stage{min-height:130px}
+}
+@media(prefers-reduced-motion:reduce){.success-card.pop{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="main-title">🔬 Resistor AI Detective</div>
+  <div class="subtitle">Become a circuit detective and crack the resistor code!</div>
+  <div class="activity-flow">🔎 Observe → 🎨 Decode → 🧠 Predict → ⚡ Build → 📊 Compare</div>
+
+  <!-- GAME -->
+  <section class="game-card">
+    <h2>🔍 Resistor Detective Challenge</h2>
+    <p class="lead">Look carefully at the resistor and identify its value.</p>
+
+    <div id="stage"><div class="placeholder">Click <b>Start challenge</b> to begin.</div></div>
+
+    <label for="answer">✏️ Enter the resistor value here</label>
+    <input id="answer" type="text" inputmode="text" autocomplete="off"
+           placeholder="e.g. 220, 220 Ω, 1 kΩ, 4.7 kΩ" disabled>
+
+    <div class="row">
+      <button id="startBtn" class="green-btn">🚀 Start challenge</button>
+      <button id="checkBtn" class="primary-btn" disabled>🔎 Check my answer</button>
+    </div>
+
+    <div id="feedback" aria-live="polite"></div>
+
+    <div class="row spaced">
+      <div class="score-box" id="scoreBox">🏆 Score: 0</div>
+      <div class="score-box" id="attemptBox">🎯 Attempts: 0</div>
+    </div>
+
+    <div class="row spaced">
+      <button id="hintBtn" class="orange-btn hidden">💡 Give me a hint</button>
+      <button id="nextBtn" class="primary-btn hidden">➡️ Next challenge</button>
+    </div>
+
+    <div id="hintOut" aria-live="polite"></div>
+    <div class="status-text" id="status">Click Start challenge to begin.</div>
+  </section>
+
+  <!-- DECODER -->
+  <section class="detect-section">
+    <div class="detect-title">🎨 Resistor Decoder — Physical Kit</div>
+    <div class="detect-subtitle">Look at a four-band resistor from your kit and select its colours from left to right.</div>
+
+    <div class="swatch-row" id="swatches" aria-hidden="true"></div>
+
+    <div class="row">
+      <div><div class="band-label">① First digit</div>
+        <select id="d1"></select></div>
+      <div><div class="band-label">② Second digit</div>
+        <select id="d2"></select></div>
+    </div>
+    <div class="row">
+      <div><div class="band-label">③ Multiplier</div>
+        <select id="mult"></select></div>
+      <div><div class="band-label">④ Tolerance</div>
+        <select id="tol"></select></div>
+    </div>
+    <button id="decodeBtn" class="detect-btn" style="width:100%">🧠 Decode my resistor</button>
+    <div id="decodeOut" aria-live="polite"></div>
+  </section>
+</div>
+
+<script>
+const COLORS = {
+  Black:"#111111", Brown:"#7A3E00", Red:"#E53935", Orange:"#F57C00",
+  Yellow:"#FBC02D", Green:"#2E7D32", Blue:"#1565C0", Violet:"#7B1FA2",
+  Grey:"#757575", White:"#F5F5F5", Gold:"#D4AF37", Silver:"#BDBDBD"
+};
+const BAND_COLORS = ["Black","Brown","Red","Orange","Yellow","Green","Blue","Violet","Grey","White"];
+const TOL_COLORS  = ["Brown","Red","Gold","Silver"];
+
+const $ = id => document.getElementById(id);
+const state = { token:null, bands:null, score:0, attempts:0 };
+
+/* Works at "/" and when mounted inside another app, e.g. "/resistor/" */
+const BASE = location.pathname.replace(/\/?$/, "/");
+
+/* ---------- helpers ---------- */
+function load(){
+  try{
+    state.score = +localStorage.getItem("rad_score") || 0;
+    state.attempts = +localStorage.getItem("rad_attempts") || 0;
+  }catch(e){}
+  renderScore();
+}
+function save(){
+  try{
+    localStorage.setItem("rad_score", state.score);
+    localStorage.setItem("rad_attempts", state.attempts);
+  }catch(e){}
+}
+function renderScore(){
+  $("scoreBox").textContent = "🏆 Score: " + state.score;
+  $("attemptBox").textContent = "🎯 Attempts: " + state.attempts;
+}
+async function api(path, body){
+  const opt = body ? { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) } : {};
+  const r = await fetch(BASE + path.replace(/^\//, ""), opt);
+  if(!r.ok) throw new Error("Request failed (" + r.status + ")");
+  return r.json();
+}
+function setStatus(t){ $("status").textContent = t; }
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+/* ---------- resistor drawing ---------- */
+function drawResistor(b){
+  const band = c => `<div class="resistor-band" style="background:${COLORS[c]}"></div>`;
+  $("stage").innerHTML = `
+    <div class="resistor-stage" role="img" aria-label="Resistor with four colour bands">
+      <div class="resistor-wire"></div>
+      <div class="resistor-body">
+        ${band(b[0])}${band(b[1])}${band(b[2])}
+        <div class="resistor-spacer"></div>
+        <div class="resistor-band tolerance-band" style="background:${COLORS[b[3]]}"></div>
+      </div>
+      <div class="resistor-wire"></div>
+    </div>
+    <div class="resistor-caption">Observe the four colour bands carefully</div>`;
+}
+
+/* ---------- celebration sound (WebAudio, no file needed) ---------- */
+function hurray(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523.25, 659.25, 783.99, 1046.5].forEach((f,i)=>{
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.type = "sine";
+      const t = ctx.currentTime + i*0.18;
+      g.gain.setValueAtTime(0.25, t);
+      g.gain.linearRampToValueAtTime(0, t+0.18);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t+0.18);
+    });
+  }catch(e){}
+}
+
+/* ---------- game flow ---------- */
+async function newChallenge(){
+  $("startBtn").disabled = true;
+  try{
+    const c = await api("/api/challenge");
+    state.token = c.token; state.bands = c.bands;
+    drawResistor(c.bands);
+    $("feedback").innerHTML = ""; $("hintOut").innerHTML = "";
+    $("answer").value = ""; $("answer").disabled = false; $("answer").focus();
+    $("checkBtn").disabled = false;
+    $("hintBtn").classList.add("hidden"); $("nextBtn").classList.add("hidden");
+    $("startBtn").textContent = "🔄 Restart";
+    setStatus("What is its resistance value? Type your answer above.");
+  }catch(e){
+    setStatus("Could not load a challenge. Check your connection and try again.");
+  }finally{
+    $("startBtn").disabled = false;
+  }
+}
+
+async function checkAnswer(){
+  const val = $("answer").value.trim();
+  if(!state.token){ setStatus("Click Start challenge first."); return; }
+  if(!val){ $("feedback").innerHTML = '<div class="wrong-card">⚠️ Please enter a resistor value before checking.</div>'; return; }
+
+  $("checkBtn").disabled = true;
+  try{
+    const r = await api("/api/check", { token:state.token, answer:val });
+
+    if(r.status === "invalid"){
+      $("feedback").innerHTML = '<div class="wrong-card">❌ I couldn’t understand that value. Try <b>100</b>, <b>220 Ω</b>, <b>1 kΩ</b> or <b>4.7 kΩ</b>.</div>';
+      setStatus("Please enter a valid positive resistance value.");
+    } else if(r.status === "correct"){
+      state.attempts++; state.score++; save(); renderScore();
+      $("feedback").innerHTML = `
+        <div class="success-card pop">
+          <h1>🎉 HURRAY!</h1>
+          <h2>Correct answer!</h2>
+          <h2>${esc(r.value)}</h2>
+          <p>Tolerance: <b>${esc(r.tolerance)}</b></p>
+          <h2>+1 MARK</h2>
+          <p>Excellent work, Detective! Click <b>Next challenge</b> to continue.</p>
+        </div>`;
+      $("hintBtn").classList.add("hidden"); $("nextBtn").classList.remove("hidden");
+      $("answer").disabled = true;
+      hurray();
+      setStatus("Correct! Your score has increased by one.");
+      return;
+    } else {
+      state.attempts++; save(); renderScore();
+      $("feedback").innerHTML = `
+        <div class="wrong-card">
+          <h2>❌ Not quite!</h2>
+          <p>The first two bands give the first two digits.</p>
+          <p>The third band tells you the multiplier.</p>
+          <p>Use <b>Give me a hint</b> or the decoder below for help.</p>
+        </div>`;
+      $("hintBtn").classList.remove("hidden");
+      setStatus("Incorrect answer. Try again or request a hint.");
+    }
+  }catch(e){
+    setStatus("Could not check your answer. Please try again.");
+  }finally{
+    if(!$("answer").disabled) $("checkBtn").disabled = false;
+  }
+}
+
+async function showHint(){
+  try{
+    const h = await api("/api/hint", { token:state.token, answer:"" });
+    $("hintOut").innerHTML = `
+      <div class="hint-card">
+        <h2>💡 Detective hint</h2>
+        <p><b>Band 1 — ${esc(h.band1[0])}</b>: digit ${h.band1[1]}</p>
+        <p><b>Band 2 — ${esc(h.band2[0])}</b>: digit ${h.band2[1]}</p>
+        <p><b>Band 3 — ${esc(h.multiplier[0])}</b>: multiplier × ${h.multiplier[1]}</p>
+        <p><b>Band 4 — ${esc(h.tolerance[0])}</b>: tolerance ${esc(h.tolerance[1])}</p>
+        <p>Combine the first two digits, then multiply by the third band. Try decoding it yourself!</p>
+      </div>`;
+  }catch(e){ setStatus("Could not load the hint. Please try again."); }
+}
+
+/* ---------- decoder ---------- */
+function fillSelect(id, list, selected){
+  $(id).innerHTML = list.map(c => `<option value="${c}"${c===selected?" selected":""}>${c}</option>`).join("");
+}
+function drawSwatches(){
+  const picks = [$("d1").value, $("d2").value, $("mult").value, $("tol").value];
+  $("swatches").innerHTML = picks.map(c => `<span class="swatch" title="${c}" style="background:${COLORS[c]}"></span>`).join("");
+}
+async function decode(){
+  try{
+    const r = await api("/api/decode", { b1:$("d1").value, b2:$("d2").value, mult:$("mult").value, tol:$("tol").value });
+    const num = "" + r.digits[0] + r.digits[1];
+    $("decodeOut").innerHTML = `
+      <div class="decode-result">
+        <h2>🎨 Resistor Detective result</h2>
+        <p><b>① First digit:</b> ${esc($("d1").value)} → ${r.digits[0]}</p>
+        <p><b>② Second digit:</b> ${esc($("d2").value)} → ${r.digits[1]}</p>
+        <p><b>③ Multiplier:</b> ${esc($("mult").value)} → × ${r.multiplier}</p>
+        <p><b>④ Tolerance:</b> ${esc($("tol").value)} → ${esc(r.tolerance)}</p>
+        <hr>
+        <h2>(${num}) × ${r.multiplier} = ${esc(r.value)}</h2>
+        <h3>Your resistor value is ${esc(r.value)} ${esc(r.tolerance)}</h3>
+      </div>`;
+  }catch(e){
+    $("decodeOut").innerHTML = '<div class="wrong-card">Could not decode. Select all four bands and try again.</div>';
+  }
+}
+
+/* ---------- wire up ---------- */
+fillSelect("d1", BAND_COLORS, "Yellow");
+fillSelect("d2", BAND_COLORS, "Violet");
+fillSelect("mult", BAND_COLORS, "Red");
+fillSelect("tol", TOL_COLORS, "Gold");
+["d1","d2","mult","tol"].forEach(id => $(id).addEventListener("change", drawSwatches));
+drawSwatches();
+
+$("startBtn").addEventListener("click", newChallenge);
+$("nextBtn").addEventListener("click", newChallenge);
+$("checkBtn").addEventListener("click", checkAnswer);
+$("hintBtn").addEventListener("click", showHint);
+$("decodeBtn").addEventListener("click", decode);
+$("answer").addEventListener("keydown", e => { if(e.key === "Enter") checkAnswer(); });
+load();
+</script>
+</body>
+</html>
